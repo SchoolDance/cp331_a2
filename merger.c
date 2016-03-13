@@ -9,7 +9,7 @@ int cmpfunc (const void *, const void *);
 
 int main (int argc, char** argv) {
   //SET THIS TO 1 IF YOU WANT TO SEE DEBUGGING INFO
-  int debug = 1;
+  int debug = 0;
   int k1 = atoi(argv[1]);
   int k2 = atoi(argv[2]);
   srand((unsigned) time(NULL));
@@ -24,13 +24,25 @@ int main (int argc, char** argv) {
 
   int *A = arrayer(nA);
   int *B = arrayer(nB);
-  // int A[16] = {1, 5, 15, 18, 19, 21, 23, 24, 27, 29, 30, 31, 32, 37, 42, 49};
-  // int B[16] = {2, 3, 4, 13, 15, 19, 20, 22, 28, 29, 38, 41, 42, 43, 48, 50};
   
   //initialize MPI
   MPI_Init(&argc, &argv); // start mpi
   MPI_Comm_rank(MPI_COMM_WORLD, &rank); // process rank
   MPI_Comm_size(MPI_COMM_WORLD, &p); // find out the number of process
+  
+  //print A and B
+  if (debug && rank == 0) {
+    printf("**A = ", rank);
+    for (int i = 0; i < nA; i++) {
+      printf("%d,", A[i]);
+    }
+    printf("\n\n");
+    printf("**B = ", rank);
+    for (int i = 0; i < nB; i++) {
+      printf("%d,", B[i]);
+    }
+    printf("\n\n");
+  }
 
   //initialize A indicies
   int startIndexA = rank * k;
@@ -42,40 +54,37 @@ int main (int argc, char** argv) {
   if (debug) printf("RANK %d -- A: %d - %d   nextA: %d\n\n", rank, startIndexA, endIndexA, tempIndex);
 
   //initialize B indicies
-  int startIndexB = -1;
-  int endIndexB = -1;
+  int startIndexB = 0;
+  int endIndexB = 0;
 
   //if rank 0, start at the beginning of B
   if (rank == 0) {
     startIndexB = 0;
-    for (int i = 0; i < nB; i++) {
-      if (B[i] > A[endIndexA - 1]) {
-        endIndexB = i - 1;
+    while (endIndexB < nB) {
+      if (B[endIndexB] > A[endIndexA - 1]) {
         break;
       }
-      
-      //if all elements in B are less than the smallest in A
-      if (endIndexB == -1) {
-        endIndexB = nB - 1; 
-      }
+      endIndexB++;
     }
   }
   //figure out where the start and end index of B
   else {
-    for (int i = 0; i < nB; i++) {
-      if (startIndexB == -1 && B[i] > A[startIndexA - 1]) {
-        startIndexB = i;
-      }
-
-      if (B[i] > A[endIndexA - 1]) {
-        endIndexB = i - 1;
+    while (startIndexB < nB) {
+      if (B[startIndexB] > A[startIndexA - 1]) {
         break;
       }
+      startIndexB++;
     }
-
-    //if this is the last proc, set the end index of B to include the rest of the array
-    if (startIndexB != -1 && rank + 1 == p) {
-      endIndexB = nB - 1;
+    
+    while (endIndexB < nB) {
+      if (B[endIndexB] > A[endIndexA - 1]) {
+        break;
+      }
+      endIndexB++;
+    }
+    
+    if (rank == p - 1) {
+      endIndexB = nB;
     }
   }
 
@@ -83,7 +92,7 @@ int main (int argc, char** argv) {
 
   int lengthOfA = endIndexA - startIndexA;
   //set length of B to 0 if it's empty (the +1 needs to be here, but messes up in this case)
-  int lengthOfB = startIndexB == -1 ? 0 : endIndexB - startIndexB + 1;
+  int lengthOfB = endIndexB - startIndexB;
   int newLength = lengthOfB + lengthOfA;
   int merged[newLength];
 
@@ -96,8 +105,8 @@ int main (int argc, char** argv) {
 
   if (debug) {
     printf("RANK %d -- A = ", rank);
-    for (int i = startIndexA; i < endIndexA; i++) {
-      printf("%d,", A[i]);
+    for (int i = 0; i < lengthOfA; i++) {
+      printf("%d,", A[startIndexA + i]);
     }
     printf("\n\n");
     printf("RANK %d -- B = ", rank);
