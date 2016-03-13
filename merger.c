@@ -5,6 +5,7 @@
 #include "mpi.h"
 
 int * arrayer(int);
+int cmpfunc (const void *, const void *);
 
 int main (int argc, char** argv) {
   //SET THIS TO 1 IF YOU WANT TO SEE DEBUGGING INFO
