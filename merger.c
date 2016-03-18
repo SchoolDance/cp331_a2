@@ -4,58 +4,61 @@
 #include <time.h>
 #include "mpi.h"
 
-int * arrayer(int);
+long long * arrayer(long);
 int cmpfunc (const void *, const void *);
 
 int main (int argc, char** argv) {
   //SET THIS TO 1 IF YOU WANT TO SEE DEBUGGING INFO
   int debug = 0;
-  int k1 = atoi(argv[1]);
-  int k2 = atoi(argv[2]);
+  long long k1 = atoi(argv[1]);
+  long long k2 = atoi(argv[2]);
   srand((unsigned) time(NULL));
 
-
+  long long i = 0;
   int p;
   int rank;
-  int nA = pow(2, k1);
-  int nB = pow(2, k2);
-  double k = log2(nA);
+  long long nA = pow(2, k1);
+  long long nB = pow(2, k2);
+  long long k = log2(nA);
   MPI_Status status[2];
 
-  int *A = arrayer(nA);
-  int *B = arrayer(nB);
-  
+  long long *A = arrayer(nA);
+  long long *B = arrayer(nB);
+
   //initialize MPI
   MPI_Init(&argc, &argv); // start mpi
   MPI_Comm_rank(MPI_COMM_WORLD, &rank); // process rank
   MPI_Comm_size(MPI_COMM_WORLD, &p); // find out the number of process
-  
+
   //print A and B
   if (debug && rank == 0) {
-    printf("**A = ", rank);
-    for (int i = 0; i < nA; i++) {
-      printf("%d,", A[i]);
+    printf("**A = %d", rank);
+    for (i = 0; i < nA; i++) {
+      printf("%lld,", A[i]);
     }
     printf("\n\n");
-    printf("**B = ", rank);
-    for (int i = 0; i < nB; i++) {
-      printf("%d,", B[i]);
+    printf("**B = %d", rank);
+    for (i = 0; i < nB; i++) {
+      printf("%lld,", B[i]);
     }
     printf("\n\n");
   }
 
   //initialize A indicies
-  int startIndexA = rank * k;
-  int endIndexA = (rank + 1) * k;
-  if (endIndexA >= nA)
+  long long startIndexA = rank * k;
+  long long endIndexA = (rank + 1) * k;
+  if (endIndexA >= nA) {
     endIndexA = nA;
-  int tempIndex = (rank + 2) * k;
+  }
+  long long tempIndex = (rank + 2) * k;
 
-  if (debug) printf("RANK %d -- A: %d - %d   nextA: %d\n\n", rank, startIndexA, endIndexA, tempIndex);
+  if (debug) {
+    printf("RANK %d -- A: %lld - %lld   nextA: %lld\n\n", rank, startIndexA, endIndexA, tempIndex);
+  }
 
   //initialize B indicies
-  int startIndexB = 0;
-  int endIndexB = 0;
+  long long startIndexB = 0;
+  long long endIndexB = 0;
 
   //if rank 0, start at the beginning of B
   if (rank == 0) {
@@ -75,28 +78,32 @@ int main (int argc, char** argv) {
       }
       startIndexB++;
     }
-    
+
     while (endIndexB < nB) {
       if (B[endIndexB] > A[endIndexA - 1]) {
         break;
       }
       endIndexB++;
     }
-    
+
     if (rank == p - 1) {
       endIndexB = nB;
     }
   }
 
-  if (debug) printf("RANK %d -- B: %d - %d\n\n", rank, startIndexB, endIndexB);
+  if (debug) {
+    printf("RANK %d -- B: %lld - %lld\n\n", rank, startIndexB, endIndexB);
+  }
 
-  int lengthOfA = endIndexA - startIndexA;
+  long long lengthOfA = endIndexA - startIndexA;
   //set length of B to 0 if it's empty (the +1 needs to be here, but messes up in this case)
-  int lengthOfB = endIndexB - startIndexB;
-  int newLength = lengthOfB + lengthOfA;
-  int merged[newLength];
+  long long lengthOfB = endIndexB - startIndexB;
+  long long newLength = lengthOfB + lengthOfA;
+  long long merged[newLength];
 
-  if(debug) printf("RANK %d -- length A: %d    length B: %d\n\n", rank, lengthOfA, lengthOfB);
+  if (debug) {
+    printf("RANK %d -- length A: %lld    length B: %lld\n\n", rank, lengthOfA, lengthOfB);
+  }
 
   /*// copy A into new array
   for(int i = 0; i < lengthOfA; i++) {
@@ -105,20 +112,20 @@ int main (int argc, char** argv) {
 
   if (debug) {
     printf("RANK %d -- A = ", rank);
-    for (int i = 0; i < lengthOfA; i++) {
-      printf("%d,", A[startIndexA + i]);
+    for (i = 0; i < lengthOfA; i++) {
+      printf("%lld,", A[startIndexA + i]);
     }
     printf("\n\n");
     printf("RANK %d -- B = ", rank);
-    for (int i = 0; i < lengthOfB; i++) {
-      printf("%d,", B[startIndexB + i]);
+    for (i = 0; i < lengthOfB; i++) {
+      printf("%lld,", B[startIndexB + i]);
     }
     printf("\n\n");
   }
 
-  int i = 0;
-  int j = 0;
-  int x = 0;
+  i = 0;
+  long long j = 0;
+  long long x = 0;
   while (i < lengthOfA && j < lengthOfB) {
     if (A[startIndexA + i] < B[startIndexB + j]) {
       merged[x] = A[startIndexA + i];
@@ -132,20 +139,20 @@ int main (int argc, char** argv) {
   }
   if (i >= lengthOfA) {
     while (j < lengthOfB) {
-      merged[x] = B[startIndexB + j]; 
+      merged[x] = B[startIndexB + j];
       j++;
       x++;
     }
   }
   if (j >= lengthOfB) {
     while (i < lengthOfA) {
-      merged[x] = A[startIndexA + i]; 
+      merged[x] = A[startIndexA + i];
       i++;
       x++;
     }
   }
-  
-  
+
+
   /*//go through each element of the subset of B
   for(int i = 0; i < lengthOfB; i++) {
     int m_index = 0;
@@ -167,8 +174,8 @@ int main (int argc, char** argv) {
 
   if (debug) {
     printf("RANK %d -- ", rank);
-    for (int i = 0; i < newLength; i++) {
-      printf("%d,", merged[i]);
+    for (i = 0; i < newLength; i++) {
+      printf("%lld,", merged[i]);
     }
     printf("\n\n");
   }
@@ -176,27 +183,28 @@ int main (int argc, char** argv) {
   //BRING ALL THE RESULTS TOGETHER
   //if this is proc 0, listen for arrays from other procs
   if (rank == 0) {
-    int finalArray[nA + nB];
-    int offset = newLength;
+    long long finalArray[nA + nB];
+    long long offset = newLength;
 
     // copy merged into final array
-    for(int i = 0; i < newLength; i++) {
+    for(i = 0; i < newLength; i++) {
       finalArray[i] = merged[i];
     }
 
     //get the array from each source and add it to the final array
-    for (int source = 1; source < p; source++) {
-      int length;
+    int source;
+    for (source = 1; source < p; source++) {
+      long long length;
 
       //get the size of the array
       MPI_Recv (&length, 1, MPI_INT, source, 0, MPI_COMM_WORLD, &status[0]);
 
       //store the incoming array
-      int tempArray[length];
+      long long tempArray[length];
       MPI_Recv (&tempArray, length, MPI_INT, source, 1, MPI_COMM_WORLD, &status[1]);
 
       //add this received array to the final array
-      for(int i = 0; i < length; i++) {
+      for(i = 0; i < length; i++) {
         finalArray[offset + i] = tempArray[i];
       }
 
@@ -206,8 +214,8 @@ int main (int argc, char** argv) {
 
     //print the result of the final array
     printf("\nFINAL ARRAY -- ");
-    for (int i = 0; i < nA + nB; i++) {
-      printf("%d,", finalArray[i]);
+    for (i = 0; i < 4; i++) {
+      printf("%lld,", finalArray[i]);
     }
     printf("\n\n");
   }
@@ -225,16 +233,17 @@ int main (int argc, char** argv) {
 }
 
 int cmpfunc (const void * a, const void * b) {
-   return (*(int*)a - *(int*)b);
+   return (*(long long*)a - *(long long*)b);
 }
 
-int * arrayer (int size) {
-  int *arr = malloc(sizeof(int) * size);
+long long * arrayer (long size) {
+  long long *arr = malloc(sizeof(long long) * size);
+  long long i;
 
-  for (int i = 0; i < size; i++) {
-    arr[i] = rand() % 10000;
+  for (i = 0; i < size; i++) {
+    arr[i] = rand() % 2147483646;
   }
 
-  qsort(arr, size, sizeof(int), cmpfunc);
+  qsort(arr, size, sizeof(long long), cmpfunc);
   return arr;
 }
